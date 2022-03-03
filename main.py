@@ -31,14 +31,14 @@ def main():
     #    split to the original dataset
     # 2. implement runKFold to generate errors of each lambda, where k = 3 in this assignment
     # 3. call plotError to plot those errors with respect to lambdas
-    '''
+    
     lambda_list = [1000, 100, 10, 1, 0.1, 0.01, 0.001]
     train_errors, val_errors = RR.runTrainTestValSplit(lambda_list, X_train, Y_train, X_val, Y_val)
     k_fold_errors = RR.runKFold(lambda_list, X_train_val, Y_train_val, 3)
     print(lambda_list)
     print(train_errors, val_errors, k_fold_errors)
     RR.plotError(lambda_list, train_errors, val_errors, k_fold_errors)
-    '''
+    
 
 if __name__ == '__main__':
     main()

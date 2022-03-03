@@ -15,7 +15,8 @@ class RegularizedLogisticRegression(object):
     '''
     def __init__(self):
         self.learningRate = 0.00001 # Feel free to play around with this if you'd like, though this value will do
-        self.num_epochs = 10000 # Feel free to play around with this if you'd like, though this value will do
+        # self.num_epochs = 10000 # Feel free to play around with this if you'd like, though this value will do
+        self.num_epochs = 10000
         self.batch_size = 15 # Feel free to play around with this if you'd like, though this value will do
         self.weights = None
 
@@ -25,7 +26,8 @@ class RegularizedLogisticRegression(object):
         #                                                                    #
         #####################################################################
 
-        self.lmbda = 0 # tune this parameter
+        self.lmbda =  1 # tune this parameter (0.83 w 1)
+
 
     def train(self, X, Y):
         '''
@@ -36,7 +38,33 @@ class RegularizedLogisticRegression(object):
         @return:
             None
         '''
-        #[TODO]
+        self.weights = np.zeros(len(X[0]))
+        for i in range(0,self.num_epochs):
+            # shuffle examples AND labels -> so the labels are the same (both the same way)
+            shuffler = np.random.permutation(len(X))
+            X_shuffled = X[shuffler]
+            Y_shuffled = Y[shuffler]
+            for i in range(0, len(X), self.batch_size):
+                xBatch = X_shuffled[i: i + self.batch_size]
+                yBatch = Y_shuffled[i: i + self.batch_size]
+                L = np.zeros_like(self.weights)
+                # for x,y in zip(xBatch, yBatch):
+                #     # for j in range(0, X.shape[1]):  
+                #     #     if (y == j):
+                #     #         L += (sigmoid_function(np.matmul(self.weights,x))[j] - 1) * x
+                #     #     else:
+                #     #         L += (sigmoid_function(np.matmul(self.weights,x))[j]) * x
+                #     prob = np.matmul(self.weights,x)
+                #     L += np.matmul(sigmoid_function(prob) - y, x)
+                # print(xBatch.shape)
+                # print(self.weights.shape)
+                prob = np.matmul(xBatch, self.weights)
+                L = np.matmul(sigmoid_function(prob) - yBatch, xBatch)
+                self.weights -= self.learningRate * (L / len(xBatch) + (2*self.lmbda*self.weights))
+            # add constant (tikhonov)
+            # losses.append(self.loss(X_shuffled, Y_shuffled))
+            # if (len(losses)>1 and abs(losses[-1]-losses[-2]) <= self.conv_threshold):
+            #     converge = True
 
     def predict(self, X):
         '''
@@ -46,7 +74,10 @@ class RegularizedLogisticRegression(object):
         @return:
             A 1D Numpy array with one element for each row in X containing the predicted class.
         '''
-        #[TODO]
+        logits = np.matmul(self.weights, np.transpose(X))
+        probabilities = np.apply_along_axis(sigmoid_function, 0, logits) #applies sigmoid to every row of logits
+        predictions = np.where(probabilities > 0.5, 1, 0) #loops through probabilities
+        return predictions #return index, ie, which class
 
     def accuracy(self,X, Y):
         '''
@@ -57,7 +88,8 @@ class RegularizedLogisticRegression(object):
         @return:
             a float number indicating accuracy (between 0 and 1)
         '''
-        #[TODO]
+        predictions = self.predict(X)
+        return np.mean(predictions == Y) #ratio of number of correct matches
 
     def runTrainTestValSplit(self, lambda_list, X_train, Y_train, X_val, Y_val):
         '''
@@ -79,8 +111,12 @@ class RegularizedLogisticRegression(object):
         '''
         train_errors = []
         val_errors = []
-        #[TODO] train model and calculate train and validation errors here for each lambda
-
+        # loop through lambda_list
+        for lambda_i in lambda_list:
+            self.lmbda = lambda_i
+            self.train(X_train,Y_train) #weights updated
+            train_errors.append(1-self.accuracy(X_train,Y_train))
+            val_errors.append(1-self.accuracy(X_val,Y_val))
         return train_errors, val_errors
 
     def _kFoldSplitIndices(self, dataset, k):
@@ -123,14 +159,28 @@ class RegularizedLogisticRegression(object):
             k_fold_errors: a list of k-fold errors with respect to the lambda_list
         '''
         k_fold_errors = []
+        indices = []
         for lmbda in lambda_list:
             self.lmbda = lmbda
             #[TODO] call _kFoldSplitIndices to split indices into k groups randomly
-
+            new_indices = self._kFoldSplitIndices(X, k)
             #[TODO] for each iteration i = 1...k, train the model using lmbda
             # on k−1 folds of data. Then test with the i-th fold.
+            train_errors = []
+            for i in range(0,k):
+                test_set = X[new_indices[i]] #test fold
+                test_labels = Y[new_indices[i]] #test labels
+                # training_set = np.concatenate((indices[:i], indices[i+1:]), axis=None)
+                training_set = new_indices[i:] + new_indices[:i+1]
+                t_indices = np.array(training_set).flatten()
+                
+                
+                self.train(X[t_indices], Y[t_indices])
+                train_errors.append(1-(self.accuracy(test_set, test_labels)))
+                #self.train(self.train(X,Y))
 
             #[TODO] calculate and record the cross validation error by averaging total errors
+            k_fold_errors.append(np.mean(train_errors)) #averages total errors using mean
 
         return k_fold_errors
 
